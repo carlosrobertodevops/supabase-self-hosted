@@ -74,22 +74,28 @@ services:
       - supabase-net
 
   storage:
-    image: supabase/storage-api:v0.33.0
+    image: supabase/storage-api:v1.11.13
     restart: always
     environment:
-      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImF1ZCI6ImRlZmF1bHQiLCJpc3MiOiJzdXBhYmFzZSJ9.aUx-PFCXpFfnmfa0EzdOG9sn26hlJTIMlnskhX5harQ
-      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiYXVkIjoiZGVmYXVsdCIsImlzcyI6InN1cGFiYXNlIn0.qRYWcVz2FTf8RzEWSB0Cwg-p7Mjzo3GWkbrAzkUGV2o
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
       PGRST_JWT_SECRET: Rn9oUXYcLrbWsLSpi4BkdypgFkxVXi3emuoAphK3LSQ=
       POSTGREST_URL: http://postgrest:3000
-      FILE_SICE_LIMIT: 500000
+      STORAGE_BACKEND: s3
       FILE_STORAGE_BACKEND: s3
-      S3_ENDPOINT: http://minio:9000
-      S3_BUCKET: uoloads
-      S3_REGION: us-east-1
-      # S3_ACCESS_KEY: minio
-      # S3_SECRET_KEY: minio123
-      S3_ACCESS_KEY: iNfTcxdJRw2IqIhnDAD8
-      S3_SECRET_KEY: Ggp9ugLPlh5YlFamLgFwapAKBMOHWKVhnHfLluey
+      #FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      FILE_SIZE_LIMIT: 52428800
+      REGION: us-east-1
+      AWS_DEFAULT_REGION: us-east-1
+      GLOBAL_S3_BUCKET: uploads
+      GLOBAL_S3_ENDPOINT: https://s3.mondaha.com
+      GLOBAL_S3_PROTOCOL: https
+      GLOBAL_S3_FORCE_PATH_STYLE: true
+      # AWS_ACCESS_KEY_ID: minio
+      # AWS_SECRET_ACCESS_KEY: minio123
+      AWS_ACCESS_KEY_ID: iNfTcxdJRw2IqIhnDAD8
+      AWS_SECRET_ACCESS_KEY: Ggp9ugLPlh5YlFamLgFwapAKBMOHWKVhnHfLluey
+      ENABLE_IMAGE_TRANSFORMATION: "true"
     depends_on:
       - postgrest
       - minio
@@ -110,6 +116,11 @@ services:
       - minio_data:/data
     networks:
       - supabase-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 5
 
   studio:
     image: supabase/studio:v0.23.08
@@ -117,8 +128,8 @@ services:
     ports:
       - "8080:3000"
     environment:
-      SUPABASE_PUBLIC_URL: http://supabase.mondaha:8080
-      SUPABASE_URL: http://supabase.mondaha.com:8080
+      SUPABASE_PUBLIC_URL: http://localhost:8080
+      SUPABASE_URL: http://localhost:8080
       POSTGRES_PASSWORD: supersecret
     depends_on:
       - db
