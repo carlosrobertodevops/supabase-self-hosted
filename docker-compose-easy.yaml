@@ -1,0 +1,133 @@
+services:
+  db:
+    image: supabase/postgres:15.1.0.93
+    container_name: supabase-db
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: supersecret
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - supabase-net
+
+  kong:
+    image: kong:3.3
+    container_name: supabase-kong
+    restart: always
+    environment:
+      KONG_DATABASE: off
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong/kong.yml:/var/lib/kong/kong.yml
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    networks:
+      - supabase-net
+
+  gotrue:
+    image: supabase/gotrue:v2.61.0
+    restart: always
+    environment:
+      GOTRUE_JWT_SECRET: Rn9oUXYcLrbWsLSpi4BkdypgFkxVXi3emuoAphK3LSQ=
+      GOTRUE_SITE_URL: http://localhost:3000
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://postgres:supersecret@db:5432/postgres
+    depends_on:
+      - db
+    networks:
+      - supabase-net
+
+  postgrest:
+    image: postgrest/postgrest:v11.2.0
+    restart: always
+    environment:
+      PGRST_DB_URI: postgres://postgres:supersecret@db:5432/postgres
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: Rn9oUXYcLrbWsLSpi4BkdypgFkxVXi3emuoAphK3LSQ=
+    depends_on:
+      - db
+    networks:
+      - supabase-net
+
+  realtime:
+    image: supabase/realtime:v2.29.2
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_NAME: postgres
+      DB_USER: postgres
+      DB_PASSWORD: supersecret
+      JWT_SECRET: Rn9oUXYcLrbWsLSpi4BkdypgFkxVXi3emuoAphK3LSQ=
+    depends_on:
+      - db
+    networks:
+      - supabase-net
+
+  storage:
+    image: supabase/storage-api:v0.33.0
+    restart: always
+    environment:
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImF1ZCI6ImRlZmF1bHQiLCJpc3MiOiJzdXBhYmFzZSJ9.aUx-PFCXpFfnmfa0EzdOG9sn26hlJTIMlnskhX5harQ
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiYXVkIjoiZGVmYXVsdCIsImlzcyI6InN1cGFiYXNlIn0.qRYWcVz2FTf8RzEWSB0Cwg-p7Mjzo3GWkbrAzkUGV2o
+      PGRST_JWT_SECRET: Rn9oUXYcLrbWsLSpi4BkdypgFkxVXi3emuoAphK3LSQ=
+      POSTGREST_URL: http://postgrest:3000
+      FILE_SICE_LIMIT: 500000
+      FILE_STORAGE_BACKEND: s3
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: uoloads
+      S3_REGION: us-east-1
+      # S3_ACCESS_KEY: minio
+      # S3_SECRET_KEY: minio123
+      S3_ACCESS_KEY: iNfTcxdJRw2IqIhnDAD8
+      S3_SECRET_KEY: Ggp9ugLPlh5YlFamLgFwapAKBMOHWKVhnHfLluey
+    depends_on:
+      - postgrest
+      - minio
+    networks:
+      - supabase-net
+
+  minio:
+    image: minio/minio
+    container_name: supabase-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - supabase-net
+
+  studio:
+    image: supabase/studio:v0.23.08
+    restart: always
+    ports:
+      - "8080:3000"
+    environment:
+      SUPABASE_PUBLIC_URL: http://supabase.mondaha:8080
+      SUPABASE_URL: http://supabase.mondaha.com:8080
+      POSTGRES_PASSWORD: supersecret
+    depends_on:
+      - db
+    networks:
+      - supabase-net
+
+volumes:
+  pg_data:
+  minio_data:
+
+networks:
+  supabase-net:
